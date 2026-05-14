@@ -18,16 +18,27 @@ import { handleUserinfo } from './handlers/userinfo';
 import { handleRoleinfo } from './handlers/roleinfo';
 import { handleHelp } from './handlers/help';
 import { handleReactionAdd, handleReactionRemove } from './handlers/reactionRoles';
+import { handle8ball } from './handlers/8ball';
+import { handlePoll } from './handlers/poll';
+import { handleTempmute } from './handlers/tempmute';
+import { handleTempban } from './handlers/tempban';
+import { handleClear } from './handlers/clear';
+import { handleInfraction } from './handlers/infraction';
+import { handleTruthOrDare } from './handlers/truthOrDare';
+import { handleNivel, handleRanking, XP_PER_MESSAGE, XP_COOLDOWN } from './handlers/level';
+import { addXp, calculateLevel, getLevelTitle, getUserLevel } from './utils/leveling';
+import { getTempActions, removeTempAction } from './utils/tempActions';
 
 dotenv.config();
 
 const TOKEN = process.env.TOKEN;
-const GUILD_ID = process.env.GUILD_ID;
 
 if (!TOKEN) {
   console.error('No se encontró TOKEN en el archivo .env');
   process.exit(1);
 }
+
+const xpCooldowns = new Map<string, number>();
 
 const client = new Client({
   intents: [
@@ -35,6 +46,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.MessageContent,
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
@@ -42,25 +54,54 @@ const client = new Client({
 client.once('clientReady', () => {
   console.log(`Bot conectado como ${client.user?.tag}`);
   console.log('Usa /setup para configurar los roles del servidor');
-  console.log('Los usuarios pueden usar los menus de roles en el canal #roles');
   console.log('Bot corriendo permanentemente. Ctrl+C para detener.');
+
+  checkTempActions();
+  setInterval(checkTempActions, 60000);
 });
 
 client.on('guildMemberAdd', async (member) => {
   if (member.partial) return;
-  try {
-    await handleWelcome(member);
-  } catch (err) {
-    console.error('Error en bienvenida:', err);
-  }
+  try { await handleWelcome(member); } catch (err) { console.error('Error en bienvenida:', err); }
 });
 
 client.on('guildMemberRemove', async (member) => {
   if (member.partial) return;
+  try { await handleFarewell(member); } catch (err) { console.error('Error en despedida:', err); }
+});
+
+client.on('messageCreate', async (message) => {
+  if (message.author.bot || !message.guild) return;
+
+  const now = Date.now();
+  const lastXp = xpCooldowns.get(message.author.id) || 0;
+  if (now - lastXp < XP_COOLDOWN) return;
+  xpCooldowns.set(message.author.id, now);
+
   try {
-    await handleFarewell(member);
-  } catch (err) {
-    console.error('Error en despedida:', err);
+    const previousData = getUserLevel(message.author.id);
+    const previousLevel = calculateLevel(previousData.xp);
+    const data = addXp(message.author.id, XP_PER_MESSAGE);
+
+    if (data.level > previousLevel) {
+      const title = getLevelTitle(data.level);
+      const { EmbedBuilder } = await import('discord.js');
+      const levelUpEmbed = new EmbedBuilder()
+        .setColor(0xffd700)
+        .setTitle('🎉 ¡Subiste de nivel!')
+        .setDescription(
+          `¡Felicitaciones **${message.member?.displayName || message.author.username}**!\n\n` +
+            `Has alcanzado el **Nivel ${data.level}** — ${title}\n` +
+            `XP: ${data.xp}`
+        )
+        .setFooter({ text: 'La Fortaleza de Duzgul — Sistema de niveles' })
+        .setTimestamp();
+
+      const levelMsg = await message.channel.send({ embeds: [levelUpEmbed] });
+      setTimeout(() => levelMsg.delete().catch(() => {}), 10000);
+    }
+  } catch {
+    // Silently fail XP addition
   }
 });
 
@@ -69,9 +110,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
     if (reaction.partial) await reaction.fetch().catch(() => {});
     if (reaction.message.partial) await reaction.message.fetch().catch(() => {});
     await handleReactionAdd(reaction as any, user as any);
-  } catch (err) {
-    console.error('Error en reaction add:', err);
-  }
+  } catch (err) { console.error('Error en reaction add:', err); }
 });
 
 client.on('messageReactionRemove', async (reaction, user) => {
@@ -79,62 +118,80 @@ client.on('messageReactionRemove', async (reaction, user) => {
     if (reaction.partial) await reaction.fetch().catch(() => {});
     if (reaction.message.partial) await reaction.message.fetch().catch(() => {});
     await handleReactionRemove(reaction as any, user as any);
-  } catch (err) {
-    console.error('Error en reaction remove:', err);
-  }
+  } catch (err) { console.error('Error en reaction remove:', err); }
 });
 
 client.on('interactionCreate', async (interaction) => {
   try {
     if (interaction.isChatInputCommand()) {
       switch (interaction.commandName) {
-        case 'setup':
-          await handleSetup(interaction);
-          break;
-        case 'restrict':
-          await handleRestrict(interaction);
-          break;
-        case 'unrestrict':
-          await handleUnrestrict(interaction);
-          break;
-        case 'warn':
-          await handleWarn(interaction);
-          break;
-        case 'warns':
-          await handleWarns(interaction);
-          break;
-        case 'userinfo':
-          await handleUserinfo(interaction);
-          break;
-        case 'roleinfo':
-          await handleRoleinfo(interaction);
-          break;
-        case 'help':
-          await handleHelp(interaction);
-          break;
+        case 'setup': await handleSetup(interaction); break;
+        case 'restrict': await handleRestrict(interaction); break;
+        case 'unrestrict': await handleUnrestrict(interaction); break;
+        case 'warn': await handleWarn(interaction); break;
+        case 'warns': await handleWarns(interaction); break;
+        case 'userinfo': await handleUserinfo(interaction); break;
+        case 'roleinfo': await handleRoleinfo(interaction); break;
+        case 'help': await handleHelp(interaction); break;
+        case '8ball': await handle8ball(interaction); break;
+        case 'encuesta': await handlePoll(interaction); break;
+        case 'tempmute': await handleTempmute(interaction); break;
+        case 'tempban': await handleTempban(interaction); break;
+        case 'limpiar': await handleClear(interaction); break;
+        case 'infraction': await handleInfraction(interaction); break;
+        case 'verdadoreto': await handleTruthOrDare(interaction); break;
+        case 'nivel': await handleNivel(interaction); break;
+        case 'ranking-niveles': await handleRanking(interaction); break;
       }
     } else if (interaction.isStringSelectMenu()) {
       await handleSelectMenu(interaction);
     }
   } catch (error) {
     console.error('Error al manejar interaccion:', error);
-
     const errorMessage = 'Ocurrio un error al procesar tu solicitud.';
-
-    if (
-      interaction instanceof CommandInteraction ||
-      interaction instanceof StringSelectMenuInteraction
-    ) {
+    if (interaction instanceof CommandInteraction || interaction instanceof StringSelectMenuInteraction) {
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply({ content: errorMessage }).catch(() => {});
       } else {
-        await interaction
-          .reply({ content: errorMessage, flags: MessageFlags.Ephemeral })
-          .catch(() => {});
+        await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral }).catch(() => {});
       }
     }
   }
 });
+
+async function checkTempActions() {
+  const actions = getTempActions();
+  const now = Date.now();
+
+  for (const action of actions) {
+    if (action.endTime <= now) {
+      const guild = client.guilds.cache.get(action.guildId);
+      if (!guild) continue;
+
+      try {
+        if (action.type === 'mute') {
+          const member = await guild.members.fetch(action.userId).catch(() => null);
+          if (member) {
+            const silenciadoRole = guild.roles.cache.find(
+              (r) => r.name === '🔇 Silenciado' || r.name === 'Silenciado'
+            );
+            if (silenciadoRole && member.roles.cache.has(silenciadoRole.id)) {
+              await member.roles.remove(silenciadoRole, `Silencio temporal expirado (Fortaleza Bot)`);
+            }
+          }
+          removeTempAction(action.userId, 'mute');
+          await logToChannel(guild, `🔇 Silencio temporal expirado para **${action.userTag}**.`, 0x27ae60);
+        } else if (action.type === 'ban') {
+          await guild.members.unban(action.userId, `Ban temporal expirado (Fortaleza Bot)`);
+          removeTempAction(action.userId, 'ban');
+          await logToChannel(guild, `🔨 Ban temporal expirado para **${action.userTag}**.`, 0x27ae60);
+        }
+      } catch (err) {
+        console.error(`Error al procesar accion temporal para ${action.userTag}:`, err);
+      }
+    }
+  }
+}
 
 client.on('error', (error) => {
   console.error('Error de conexion:', error);
