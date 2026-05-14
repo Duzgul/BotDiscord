@@ -1,6 +1,14 @@
 import { StringSelectMenuInteraction, MessageFlags } from 'discord.js';
 import { SELF_ASSIGNABLE_CATEGORIES } from '../config/selfAssignable';
 
+function findRoleByName(guild: StringSelectMenuInteraction['guild'], plainName: string, emoji: string) {
+  if (!guild) return undefined;
+  const displayName = `${emoji} ${plainName}`;
+  return guild.roles.cache.find(
+    (r) => r.name === displayName || r.name === plainName
+  );
+}
+
 export async function handleSelectMenu(interaction: StringSelectMenuInteraction) {
   if (!interaction.guild || !interaction.member) {
     await interaction.reply({
@@ -37,7 +45,9 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
   const errors: string[] = [];
 
   for (const roleName of selectedNames) {
-    const role = guild.roles.cache.find((r) => r.name === roleName);
+    const roleConfig = category.roles.find((r) => r.name === roleName);
+    const emoji = roleConfig?.emoji ?? '';
+    const role = findRoleByName(guild, roleName, emoji);
     if (!role) {
       errors.push(roleName);
       continue;
@@ -46,7 +56,7 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
     if (!member.roles.cache.has(role.id)) {
       try {
         await member.roles.add(role, `Autoasignación — ${category.name} (Fortaleza Bot)`);
-        added.push(roleName);
+        added.push(`${emoji} ${roleName}`);
       } catch {
         errors.push(roleName);
       }
@@ -54,13 +64,15 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
   }
 
   for (const roleName of deselectedNames) {
-    const role = guild.roles.cache.find((r) => r.name === roleName);
+    const roleConfig = category.roles.find((r) => r.name === roleName);
+    const emoji = roleConfig?.emoji ?? '';
+    const role = findRoleByName(guild, roleName, emoji);
     if (!role) continue;
 
     if (member.roles.cache.has(role.id)) {
       try {
         await member.roles.remove(role, `Desasignación — ${category.name} (Fortaleza Bot)`);
-        removed.push(roleName);
+        removed.push(`${emoji} ${roleName}`);
       } catch {
         errors.push(roleName);
       }

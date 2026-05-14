@@ -20,6 +20,13 @@ import {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function findRoleByName(guild: Guild, name: string, emoji: string): Role | undefined {
+  const displayName = `${emoji} ${name}`;
+  return guild.roles.cache.find(
+    (r) => r.name === displayName || r.name === name
+  );
+}
+
 export async function handleSetup(interaction: ChatInputCommandInteraction) {
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
     await interaction.reply({
@@ -67,28 +74,28 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     const createdRoles = new Map<string, Role>();
 
     for (const roleConfig of ROLES_CONFIG) {
-      const existingRole = guild.roles.cache.find((r) => r.name === roleConfig.name);
+      const displayName = `${roleConfig.emoji} ${roleConfig.name}`;
+      const existingRole = findRoleByName(guild, roleConfig.name, roleConfig.emoji);
 
       if (existingRole) {
-        log(`♻️ Actualizando: **${roleConfig.name}**`);
+        log(`♻️ Actualizando: **${displayName}**`);
         await existingRole.edit({
+          name: displayName,
           colors: { primaryColor: roleConfig.color },
           permissions: roleConfig.permissions,
           hoist: roleConfig.hoist,
           mentionable: roleConfig.mentionable,
-          unicodeEmoji: roleConfig.emoji,
           reason: 'Actualización automática (Fortaleza Bot)',
         });
         createdRoles.set(roleConfig.name, existingRole);
       } else {
-        log(`✨ Creando: **${roleConfig.name}** ${roleConfig.emoji}`);
+        log(`✨ Creando: **${displayName}**`);
         const newRole = await guild.roles.create({
-          name: roleConfig.name,
+          name: displayName,
           colors: { primaryColor: roleConfig.color },
           permissions: roleConfig.permissions,
           hoist: roleConfig.hoist,
           mentionable: roleConfig.mentionable,
-          unicodeEmoji: roleConfig.emoji,
           reason: 'Creación automática (Fortaleza Bot)',
         });
         createdRoles.set(roleConfig.name, newRole);
@@ -107,29 +114,38 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
 
     for (const category of SELF_ASSIGNABLE_CATEGORIES) {
       for (const roleConfig of category.roles) {
+        const displayName = `${roleConfig.emoji} ${roleConfig.name}`;
+
         if (HIERARCHICAL_ROLE_NAMES.includes(roleConfig.name)) {
-          const existingRole = guild.roles.cache.find((r) => r.name === roleConfig.name);
+          const existingRole = findRoleByName(guild, roleConfig.name, roleConfig.emoji);
           if (existingRole) {
+            await existingRole.edit({
+              name: displayName,
+              reason: 'Actualización automática (Fortaleza Bot)',
+            });
             createdRoles.set(roleConfig.name, existingRole);
-            log(`♻️ Ya existe (jerárquico): **${roleConfig.name}**`);
+            log(`♻️ Actualizado (jerárquico): **${displayName}**`);
           }
           continue;
         }
 
-        const existingRole = guild.roles.cache.find((r) => r.name === roleConfig.name);
+        const existingRole = findRoleByName(guild, roleConfig.name, roleConfig.emoji);
 
         if (existingRole) {
+          await existingRole.edit({
+            name: displayName,
+            reason: `Actualización autoelegible (Fortaleza Bot)`,
+          });
           createdRoles.set(roleConfig.name, existingRole);
-          log(`♻️ Ya existe: **${roleConfig.name}**`);
+          log(`♻️ Actualizado: **${displayName}**`);
         } else {
-          log(`✨ Creando: **${roleConfig.name}** ${roleConfig.emoji}`);
+          log(`✨ Creando: **${displayName}**`);
           const newRole = await guild.roles.create({
-            name: roleConfig.name,
+            name: displayName,
             colors: { primaryColor: roleConfig.color },
             permissions: SELF_ASSIGNABLE_PERMISSIONS,
             hoist: false,
             mentionable: roleConfig.mentionable,
-            unicodeEmoji: roleConfig.emoji,
             reason: `Creación autoelegible - ${category.name} (Fortaleza Bot)`,
           });
           createdRoles.set(roleConfig.name, newRole);
@@ -155,6 +171,12 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
         (r) =>
           r.id !== guild.id &&
           !SELF_ASSIGNABLE_HIERARCHY.includes(r.name) &&
+          !SELF_ASSIGNABLE_HIERARCHY.some((name) => {
+            const cfg = [...ROLES_CONFIG, ...SELF_ASSIGNABLE_CATEGORIES.flatMap((c) => c.roles)].find(
+              (rc) => rc.name === name || r.name === `${rc.emoji} ${rc.name}`
+            );
+            return cfg && r.name === `${cfg.emoji} ${cfg.name}`;
+          }) &&
           r.position < botHighestPos
       )
       .sort((a, b) => b.position - a.position);
@@ -190,8 +212,10 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
       const role = createdRoles.get(name);
       if (role) {
         const freshRole = guild.roles.cache.get(role.id);
+        const roleCfg = ROLES_CONFIG.find((rc) => rc.name === name);
+        const displayStr = roleCfg ? `${roleCfg.emoji} ${name}` : name;
         if (freshRole) {
-          log(`  ${name} → posición ${freshRole.position}`);
+          log(`  ${displayStr} → posición ${freshRole.position}`);
         }
       }
     }
@@ -212,7 +236,7 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
 
     const silenciadoRole = createdRoles.get('Silenciado');
     if (silenciadoRole) {
-      log('🔇 Configurando **Silenciado** en canales...');
+      log('🔇 Configurando **🔇 Silenciado** en canales...');
       let channelCount = 0;
 
       for (const channel of channels.values()) {
@@ -239,7 +263,7 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
 
     const prisioneroRole = createdRoles.get('Prisionero de la Fortaleza');
     if (prisioneroRole) {
-      log('⛓️ Configurando **Prisionero de la Fortaleza** en canales...');
+      log('⛓️ Configurando **⛓️ Prisionero de la Fortaleza** en canales...');
       let channelCount = 0;
 
       for (const channel of channels.values()) {
@@ -304,7 +328,7 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
         .setDescription(category.description);
 
       const roleListLines = category.roles.map(
-        (r) => `${r.emoji} **${r.name}** → ${r.description}`
+        (r) => `${r.emoji} **${r.name}** — ${r.description}`
       );
       categoryEmbed.addFields({
         name: 'Roles disponibles',
