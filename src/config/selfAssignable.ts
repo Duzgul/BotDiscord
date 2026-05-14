@@ -117,6 +117,21 @@ export const SELF_ASSIGNABLE_CATEGORIES: SelfAssignableCategory[] = [
       },
     ],
   },
+  {
+    id: 'status',
+    name: 'Estado',
+    emoji: '🆕',
+    description: 'Roles que se asignan automáticamente o que puedes remover cuando quieras.',
+    roles: [
+      {
+        name: 'Novato',
+        emoji: '🆕',
+        description: 'Se asigna automáticamente al entrar — remuévelo cuando te sientas cómodo',
+        color: 0x95a5a6,
+        mentionable: false,
+      },
+    ],
+  },
 ];
 
 export const SELF_ASSIGNABLE_PERMISSIONS: bigint[] = [

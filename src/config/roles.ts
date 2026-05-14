@@ -178,4 +178,5 @@ export const SELF_ASSIGNABLE_HIERARCHY = [
   'Eventos y Torneos',
   'Directos y Streams',
   'Nuevas Historias',
+  'Novato',
 ];

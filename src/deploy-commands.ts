@@ -17,9 +17,74 @@ const commands = [
   new SlashCommandBuilder()
     .setName('setup')
     .setDescription('Configura los roles, canales y permisos del servidor de la Fortaleza')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .toJSON(),
-];
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName('restrict')
+    .setDescription('Silencia o prisiona a un usuario')
+    .addUserOption((option) =>
+      option.setName('usuario').setDescription('El usuario a restringir').setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName('tipo')
+        .setDescription('Tipo de restriccion')
+        .setRequired(true)
+        .addChoices(
+          { name: '🔇 Silenciado', value: 'silenciado' },
+          { name: '⛓️ Prisionero', value: 'prisionero' }
+        )
+    )
+    .addStringOption((option) =>
+      option.setName('razon').setDescription('Razon de la restriccion').setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName('unrestrict')
+    .setDescription('Remueve la restriccion de un usuario')
+    .addUserOption((option) =>
+      option.setName('usuario').setDescription('El usuario a desrestringir').setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName('warn')
+    .setDescription('Advierte a un usuario (3 advertencias = silencio automatico)')
+    .addUserOption((option) =>
+      option.setName('usuario').setDescription('El usuario a advertir').setRequired(true)
+    )
+    .addStringOption((option) =>
+      option.setName('razon').setDescription('Razon de la advertencia').setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName('warns')
+    .setDescription('Muestra el historial de advertencias de un usuario')
+    .addUserOption((option) =>
+      option.setName('usuario').setDescription('El usuario a consultar').setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName('userinfo')
+    .setDescription('Muestra informacion detallada de un usuario')
+    .addUserOption((option) =>
+      option.setName('usuario').setDescription('El usuario a consultar (tu mismo si no se especifica)').setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('roleinfo')
+    .setDescription('Muestra informacion detallada de un rol')
+    .addRoleOption((option) =>
+      option.setName('rol').setDescription('El rol a consultar').setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('Muestra la lista de comandos disponibles'),
+].map((cmd) => cmd.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
@@ -33,8 +98,10 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
       body: commands,
     });
 
-    console.log('✅ Comandos slash registrados exitosamente.');
-    console.log('El comando /setup ya está disponible en tu servidor.');
+    console.log('Comandos slash registrados exitosamente:');
+    for (const cmd of commands) {
+      console.log(`  /${cmd.name} - ${cmd.description}`);
+    }
   } catch (error) {
     console.error('Error al registrar comandos:', error);
   }
