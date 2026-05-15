@@ -14,176 +14,55 @@ if (!TOKEN || !GUILD_ID) {
 const CLIENT_ID = Buffer.from(TOKEN.split('.')[0], 'base64').toString();
 
 const commands = [
-  new SlashCommandBuilder()
-    .setName('setup')
-    .setDescription('Configura los roles, canales y permisos del servidor de la Fortaleza')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  // === ADMIN ===
+  new SlashCommandBuilder().setName('setup').setDescription('Configura los roles, canales y permisos del servidor').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('restrict').setDescription('Silencia o prisiona a un usuario').addUserOption(o => o.setName('usuario').setDescription('El usuario a restringir').setRequired(true)).addStringOption(o => o.setName('tipo').setDescription('Tipo de restriccion').setRequired(true).addChoices({ name: '🔇 Silenciado', value: 'silenciado' }, { name: '⛓️ Prisionero', value: 'prisionero' })).addStringOption(o => o.setName('razon').setDescription('Razon').setRequired(false)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('unrestrict').setDescription('Remueve la restriccion de un usuario').addUserOption(o => o.setName('usuario').setDescription('El usuario').setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('warn').setDescription('Advierte a un usuario (3 warns = silencio automatico)').addUserOption(o => o.setName('usuario').setDescription('El usuario').setRequired(true)).addStringOption(o => o.setName('razon').setDescription('Razon').setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('warns').setDescription('Historial de advertencias').addUserOption(o => o.setName('usuario').setDescription('El usuario').setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('tempmute').setDescription('Silencia temporalmente').addUserOption(o => o.setName('usuario').setDescription('El usuario').setRequired(true)).addStringOption(o => o.setName('tiempo').setDescription('Duracion (30m, 1h, 2h, 1d)').setRequired(true)).addStringOption(o => o.setName('razon').setDescription('Razon').setRequired(false)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('tempban').setDescription('Banea temporalmente').addUserOption(o => o.setName('usuario').setDescription('El usuario').setRequired(true)).addStringOption(o => o.setName('tiempo').setDescription('Duracion (1h, 1d, 1w)').setRequired(true)).addStringOption(o => o.setName('razon').setDescription('Razon').setRequired(false)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('limpiar').setDescription('Borra mensajes del canal').addIntegerOption(o => o.setName('cantidad').setDescription('1-100').setRequired(true).setMinValue(1).setMaxValue(100)).setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+  new SlashCommandBuilder().setName('infraction').setDescription('Historial completo de infracciones').addUserOption(o => o.setName('usuario').setDescription('El usuario').setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
-  new SlashCommandBuilder()
-    .setName('restrict')
-    .setDescription('Silencia o prisiona a un usuario')
-    .addUserOption((option) =>
-      option.setName('usuario').setDescription('El usuario a restringir').setRequired(true)
-    )
-    .addStringOption((option) =>
-      option
-        .setName('tipo')
-        .setDescription('Tipo de restriccion')
-        .setRequired(true)
-        .addChoices(
-          { name: '🔇 Silenciado', value: 'silenciado' },
-          { name: '⛓️ Prisionero', value: 'prisionero' }
-        )
-    )
-    .addStringOption((option) =>
-      option.setName('razon').setDescription('Razon de la restriccion').setRequired(false)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  // === BACKUP ===
+  new SlashCommandBuilder().setName('backup-crear').setDescription('Crea un backup de roles y permisos').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('backup-listar').setDescription('Lista los backups disponibles').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('backup-restaurar').setDescription('Restaura un backup').addStringOption(o => o.setName('id').setDescription('ID del backup').setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('backup-eliminar').setDescription('Elimina un backup').addStringOption(o => o.setName('id').setDescription('ID del backup').setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
-  new SlashCommandBuilder()
-    .setName('unrestrict')
-    .setDescription('Remueve la restriccion de un usuario')
-    .addUserOption((option) =>
-      option.setName('usuario').setDescription('El usuario a desrestringir').setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  // === INFO ===
+  new SlashCommandBuilder().setName('userinfo').setDescription('Info de un usuario').addUserOption(o => o.setName('usuario').setDescription('El usuario').setRequired(false)),
+  new SlashCommandBuilder().setName('roleinfo').setDescription('Info de un rol').addRoleOption(o => o.setName('rol').setDescription('El rol').setRequired(true)),
+  new SlashCommandBuilder().setName('help').setDescription('Lista de comandos'),
 
-  new SlashCommandBuilder()
-    .setName('warn')
-    .setDescription('Advierte a un usuario (3 advertencias = silencio automatico)')
-    .addUserOption((option) =>
-      option.setName('usuario').setDescription('El usuario a advertir').setRequired(true)
-    )
-    .addStringOption((option) =>
-      option.setName('razon').setDescription('Razon de la advertencia').setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  // === FUN ===
+  new SlashCommandBuilder().setName('8ball').setDescription('Bola 8 magica de la Fortaleza').addStringOption(o => o.setName('pregunta').setDescription('Tu pregunta').setRequired(true)),
+  new SlashCommandBuilder().setName('encuesta').setDescription('Crea una encuesta').addStringOption(o => o.setName('pregunta').setDescription('La pregunta').setRequired(true)).addStringOption(o => o.setName('opcion1').setDescription('Opcion 1').setRequired(false)).addStringOption(o => o.setName('opcion2').setDescription('Opcion 2').setRequired(false)).addStringOption(o => o.setName('opcion3').setDescription('Opcion 3').setRequired(false)).addStringOption(o => o.setName('opcion4').setDescription('Opcion 4').setRequired(false)).addStringOption(o => o.setName('opcion5').setDescription('Opcion 5').setRequired(false)),
+  new SlashCommandBuilder().setName('verdadoreto').setDescription('Verdad o reto medieval'),
 
-  new SlashCommandBuilder()
-    .setName('warns')
-    .setDescription('Muestra el historial de advertencias de un usuario')
-    .addUserOption((option) =>
-      option.setName('usuario').setDescription('El usuario a consultar').setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  // === LEVELS ===
+  new SlashCommandBuilder().setName('nivel').setDescription('Tu nivel o el de otro usuario').addUserOption(o => o.setName('usuario').setDescription('El usuario').setRequired(false)),
+  new SlashCommandBuilder().setName('ranking-niveles').setDescription('Top 10 de miembros con mas nivel'),
 
-  new SlashCommandBuilder()
-    .setName('userinfo')
-    .setDescription('Muestra informacion detallada de un usuario')
-    .addUserOption((option) =>
-      option.setName('usuario').setDescription('El usuario a consultar').setRequired(false)
-    ),
+  // === PROFILE ===
+  new SlashCommandBuilder().setName('perfil').setDescription('Tu perfil o el de otro usuario').addUserOption(o => o.setName('usuario').setDescription('El usuario').setRequired(false)),
 
-  new SlashCommandBuilder()
-    .setName('roleinfo')
-    .setDescription('Muestra informacion detallada de un rol')
-    .addRoleOption((option) =>
-      option.setName('rol').setDescription('El rol a consultar').setRequired(true)
-    ),
+  // === BIRTHDAYS ===
+  new SlashCommandBuilder().setName('cumpleaños-registrar').setDescription('Registra tu cumpleaños').addIntegerOption(o => o.setName('dia').setDescription('Dia (1-31)').setRequired(true).setMinValue(1).setMaxValue(31)).addIntegerOption(o => o.setName('mes').setDescription('Mes (1-12)').setRequired(true).setMinValue(1).setMaxValue(12)),
+  new SlashCommandBuilder().setName('cumpleaños-ver').setDescription('Ve el cumpleaños de alguien').addUserOption(o => o.setName('usuario').setDescription('El usuario').setRequired(false)),
+  new SlashCommandBuilder().setName('cumpleaños-listar').setDescription('Lista de cumpleaños').addIntegerOption(o => o.setName('mes').setDescription('Mes (1-12)').setRequired(false).setMinValue(1).setMaxValue(12)),
+  new SlashCommandBuilder().setName('cumpleaños-eliminar').setDescription('Elimina tu cumpleaños'),
 
-  new SlashCommandBuilder()
-    .setName('help')
-    .setDescription('Muestra la lista de comandos disponibles'),
+  // === SUGGESTIONS ===
+  new SlashCommandBuilder().setName('sugerir').setDescription('Crea una sugerencia').addStringOption(o => o.setName('texto').setDescription('Tu sugerencia').setRequired(true)),
+  new SlashCommandBuilder().setName('sugerir-aprobar').setDescription('Aprueba una sugerencia').addStringOption(o => o.setName('id').setDescription('ID de la sugerencia').setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder().setName('sugerir-rechazar').setDescription('Rechaza una sugerencia').addStringOption(o => o.setName('id').setDescription('ID de la sugerencia').setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
-  // Nuevos comandos
-  new SlashCommandBuilder()
-    .setName('8ball')
-    .setDescription('Consulta la bola 8 magica de la Fortaleza')
-    .addStringOption((option) =>
-      option.setName('pregunta').setDescription('Tu pregunta para la bola 8').setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('encuesta')
-    .setDescription('Crea una encuesta con reacciones')
-    .addStringOption((option) =>
-      option.setName('pregunta').setDescription('La pregunta de la encuesta').setRequired(true)
-    )
-    .addStringOption((option) =>
-      option.setName('opcion1').setDescription('Primera opcion (dejar vacio para Si/No)').setRequired(false)
-    )
-    .addStringOption((option) =>
-      option.setName('opcion2').setDescription('Segunda opcion').setRequired(false)
-    )
-    .addStringOption((option) =>
-      option.setName('opcion3').setDescription('Tercera opcion').setRequired(false)
-    )
-    .addStringOption((option) =>
-      option.setName('opcion4').setDescription('Cuarta opcion').setRequired(false)
-    )
-    .addStringOption((option) =>
-      option.setName('opcion5').setDescription('Quinta opcion').setRequired(false)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('tempmute')
-    .setDescription('Silencia temporalmente a un usuario')
-    .addUserOption((option) =>
-      option.setName('usuario').setDescription('El usuario a silenciar').setRequired(true)
-    )
-    .addStringOption((option) =>
-      option
-        .setName('tiempo')
-        .setDescription('Duracion (ej: 30m, 1h, 2h, 1d)')
-        .setRequired(true)
-    )
-    .addStringOption((option) =>
-      option.setName('razon').setDescription('Razon del silencio').setRequired(false)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  new SlashCommandBuilder()
-    .setName('tempban')
-    .setDescription('Banea temporalmente a un usuario')
-    .addUserOption((option) =>
-      option.setName('usuario').setDescription('El usuario a banear').setRequired(true)
-    )
-    .addStringOption((option) =>
-      option
-        .setName('tiempo')
-        .setDescription('Duracion (ej: 1h, 1d, 1w)')
-        .setRequired(true)
-    )
-    .addStringOption((option) =>
-      option.setName('razon').setDescription('Razon del ban').setRequired(false)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  new SlashCommandBuilder()
-    .setName('limpiar')
-    .setDescription('Borra N mensajes del canal')
-    .addIntegerOption((option) =>
-      option
-        .setName('cantidad')
-        .setDescription('Numero de mensajes a borrar (1-100)')
-        .setRequired(true)
-        .setMinValue(1)
-        .setMaxValue(100)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
-
-  new SlashCommandBuilder()
-    .setName('infraction')
-    .setDescription('Muestra el historial completo de infracciones de un usuario')
-    .addUserOption((option) =>
-      option.setName('usuario').setDescription('El usuario a consultar').setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  new SlashCommandBuilder()
-    .setName('verdadoreto')
-    .setDescription('Juega verdad o reto con tematica medieval'),
-
-  new SlashCommandBuilder()
-    .setName('nivel')
-    .setDescription('Muestra tu nivel o el de otro usuario')
-    .addUserOption((option) =>
-      option.setName('usuario').setDescription('El usuario a consultar').setRequired(false)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('ranking-niveles')
-    .setDescription('Muestra el top 10 de miembros con mas nivel'),
+  // === TICKETS ===
+  new SlashCommandBuilder().setName('ticket-crear').setDescription('Abre un ticket de soporte').addStringOption(o => o.setName('motivo').setDescription('Motivo del ticket').setRequired(true)),
+  new SlashCommandBuilder().setName('ticket-cerrar').setDescription('Cierra el ticket actual'),
+  new SlashCommandBuilder().setName('ticket-listar').setDescription('Lista tickets abiertos').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 ].map((cmd) => cmd.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -194,13 +73,11 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
     console.log(`Client ID: ${CLIENT_ID}`);
     console.log(`Guild ID: ${GUILD_ID}`);
 
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
-      body: commands,
-    });
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
 
     console.log(`Comandos slash registrados exitosamente (${commands.length} comandos):`);
     for (const cmd of commands) {
-      console.log(`  /${cmd.name} - ${cmd.description}`);
+      console.log(`  /${cmd.name}`);
     }
   } catch (error) {
     console.error('Error al registrar comandos:', error);

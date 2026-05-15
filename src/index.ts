@@ -28,6 +28,13 @@ import { handleTruthOrDare } from './handlers/truthOrDare';
 import { handleNivel, handleRanking, XP_PER_MESSAGE, XP_COOLDOWN } from './handlers/level';
 import { addXp, calculateLevel, getLevelTitle, getUserLevel } from './utils/leveling';
 import { getTempActions, removeTempAction } from './utils/tempActions';
+import { handleProfile } from './handlers/profile';
+import { handleBirthdayRegister, handleBirthdayView, handleBirthdayList, handleBirthdayRemove, checkBirthdays } from './handlers/birthday';
+import { handleBackupCreate, handleBackupList, handleBackupRestore, handleBackupDelete } from './handlers/backup';
+import { handleSuggestionCreate, handleSuggestionApprove, handleSuggestionReject } from './handlers/suggestion';
+import { handleTicketCreate, handleTicketClose, handleTicketList } from './handlers/ticket';
+import { updateMemberCount } from './handlers/memberCount';
+import { addVoiceTime, setVoiceJoin } from './utils/profiles';
 
 dotenv.config();
 
@@ -47,6 +54,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
@@ -58,16 +66,23 @@ client.once('clientReady', () => {
 
   checkTempActions();
   setInterval(checkTempActions, 60000);
+
+  setInterval(() => {
+    checkBirthdays(client).catch((err) => console.error('Error checking birthdays:', err));
+  }, 60 * 60 * 1000);
+  checkBirthdays(client).catch(() => {});
 });
 
 client.on('guildMemberAdd', async (member) => {
   if (member.partial) return;
   try { await handleWelcome(member); } catch (err) { console.error('Error en bienvenida:', err); }
+  try { updateMemberCount(member.guild); } catch (err) { console.error('Error updating member count:', err); }
 });
 
 client.on('guildMemberRemove', async (member) => {
   if (member.partial) return;
   try { await handleFarewell(member); } catch (err) { console.error('Error en despedida:', err); }
+  try { updateMemberCount(member.guild); } catch (err) { console.error('Error updating member count:', err); }
 });
 
 client.on('messageCreate', async (message) => {
@@ -104,6 +119,27 @@ client.on('messageCreate', async (message) => {
     // Silently fail XP addition
   }
 });
+
+// Voice state tracking
+client.on('voiceStateUpdate', async (oldState, newState) => {
+  const userId = newState.id || oldState.id;
+
+  if (!oldState.channelId && newState.channelId) {
+    setVoiceJoin(userId, Date.now());
+  } else if (oldState.channelId && !newState.channelId) {
+    const joinTs = getVoiceJoinTimestamp(userId);
+    if (joinTs) {
+      const timeInVoice = Math.floor((Date.now() - joinTs) / 1000);
+      if (timeInVoice > 1) addVoiceTime(userId, timeInVoice);
+      setVoiceJoin(userId, null);
+    }
+  }
+});
+
+function getVoiceJoinTimestamp(userId: string): number | null {
+  const { getProfile } = require('./utils/profiles');
+  return getProfile(userId).voiceJoinTimestamp;
+}
 
 client.on('messageReactionAdd', async (reaction, user) => {
   try {
@@ -142,6 +178,21 @@ client.on('interactionCreate', async (interaction) => {
         case 'verdadoreto': await handleTruthOrDare(interaction); break;
         case 'nivel': await handleNivel(interaction); break;
         case 'ranking-niveles': await handleRanking(interaction); break;
+        case 'perfil': await handleProfile(interaction); break;
+        case 'cumpleaños-registrar': await handleBirthdayRegister(interaction); break;
+        case 'cumpleaños-ver': await handleBirthdayView(interaction); break;
+        case 'cumpleaños-listar': await handleBirthdayList(interaction); break;
+        case 'cumpleaños-eliminar': await handleBirthdayRemove(interaction); break;
+        case 'backup-crear': await handleBackupCreate(interaction); break;
+        case 'backup-listar': await handleBackupList(interaction); break;
+        case 'backup-restaurar': await handleBackupRestore(interaction); break;
+        case 'backup-eliminar': await handleBackupDelete(interaction); break;
+        case 'sugerir': await handleSuggestionCreate(interaction); break;
+        case 'sugerir-aprobar': await handleSuggestionApprove(interaction); break;
+        case 'sugerir-rechazar': await handleSuggestionReject(interaction); break;
+        case 'ticket-crear': await handleTicketCreate(interaction); break;
+        case 'ticket-cerrar': await handleTicketClose(interaction); break;
+        case 'ticket-listar': await handleTicketList(interaction); break;
       }
     } else if (interaction.isStringSelectMenu()) {
       await handleSelectMenu(interaction);

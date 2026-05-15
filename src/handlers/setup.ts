@@ -20,6 +20,7 @@ import {
 } from '../config/selfAssignable';
 import { WELCOME_CONFIG } from '../config/welcome';
 import { saveReactionMessages } from '../utils/warnings';
+import { createMemberCountChannel } from './memberCount';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -66,7 +67,7 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     // ========================================
     // PASO 1: Crear/actualizar roles jerárquicos
     // ========================================
-    log('**[1/7] Creando/actualizando roles jerárquicos...**');
+    log('**[1/9] Creando/actualizando roles jerárquicos...**');
     const createdRoles = new Map<string, Role>();
 
     for (const roleConfig of ROLES_CONFIG) {
@@ -103,7 +104,7 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     // ========================================
     // PASO 2: Crear roles autoelegibles + Novato
     // ========================================
-    log('\n**[2/7] Creando roles autoelegibles...**');
+    log('\n**[2/9] Creando roles autoelegibles...**');
     let newRolesCount = 0;
 
     for (const category of SELF_ASSIGNABLE_CATEGORIES) {
@@ -153,7 +154,7 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     // ========================================
     // PASO 3: Configurar jerarquía
     // ========================================
-    log('\n**[3/7] Configurando jerarquía de roles...**');
+    log('\n**[3/9] Configurando jerarquía de roles...**');
 
     await guild.roles.fetch();
     const botHighestPos = botMember.roles.highest.position;
@@ -201,7 +202,7 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     // ========================================
     // PASO 4: Canales (#bienvenida, #logs, permisos)
     // ========================================
-    log('\n**[4/7] Configurando canales...**');
+    log('\n**[4/9] Configurando canales...**');
 
     // --- #bienvenida ---
     let bienvenidaChannel = guild.channels.cache.find(
@@ -354,9 +355,9 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     }
 
     // ========================================
-    // PASO 5: Canal #roles con menús y reacciones
+    // PASO 7: Publicar menús de roles autoelegibles
     // ========================================
-    log('\n**[5/7] Publicando menús de roles autoelegibles...**');
+    log('\n**[7/9] Publicando menús de roles autoelegibles...**');
 
     let rolesChannel = guild.channels.cache.find(
       (c) => c.name.toLowerCase() === 'roles' && c.type === ChannelType.GuildText
@@ -462,9 +463,53 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     log('✅ Menús de roles publicados en #' + rolesChannel.name);
 
     // ========================================
+    // PASO 5: Canales adicionales (#sugerencias, tickets, member count)
+    // ========================================
+    log('\n**[5/9] Configurando canales adicionales...**');
+
+    // #sugerencias
+    let sugerenciasChannel = guild.channels.cache.find(
+      (c) => c.name === 'sugerencias' && c.type === ChannelType.GuildText
+    ) as TextChannel | undefined;
+
+    if (!sugerenciasChannel) {
+      log('📝 Creando canal #sugerencias...');
+      sugerenciasChannel = await guild.channels.create({
+        name: 'sugerencias',
+        type: ChannelType.GuildText,
+        topic: '💡 Comparte tus sugerencias y vota las de otros',
+        reason: 'Canal de sugerencias (Fortaleza Bot)',
+      });
+      log('  ✅ Canal #sugerencias creado');
+    } else {
+      log('♻️ Canal #sugerencias ya existe');
+    }
+
+    // Tickets category
+    const ticketsCat = guild.channels.cache.find(
+      (c) => c.name.toLowerCase() === 'tickets' && c.type === ChannelType.GuildCategory
+    );
+    if (!ticketsCat) {
+      log('📝 Creando categoría Tickets...');
+      await guild.channels.create({
+        name: 'Tickets',
+        type: ChannelType.GuildCategory,
+        reason: 'Categoría para tickets de soporte (Fortaleza Bot)',
+      });
+      log('  ✅ Categoría Tickets creada');
+    } else {
+      log('♻️ Categoría Tickets ya existe');
+    }
+
+    // Member count channel
+    log('📊 Configurando contador de miembros...');
+    const memberCountResult = await createMemberCountChannel(guild);
+    log(`  ${memberCountResult}`);
+
+    // ========================================
     // PASO 6: Verificación final
     // ========================================
-    log('\n**[6/7] Verificación...**');
+    log('\n**[6/9] Verificación...**');
 
     await guild.roles.fetch();
     for (const name of SELF_ASSIGNABLE_HIERARCHY) {
@@ -481,15 +526,18 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     }
 
     // ========================================
-    // PASO 7: Resumen final
+    // PASO 8: Resumen final
     // ========================================
-    log('\n**[7/7] Resumen**');
+    log('\n**[9/9] Resumen**');
     log(`- ${createdRoles.size} roles procesados`);
     log('- Jerarquía configurada');
     log('- Permisos de canales configurados (Silenciado/Prisionero)');
     log('- Canal #apelaciones configurado');
-    log('- Canal #bienvenida configurado');
-    log('- Canal #logs configurado');
+log('- Canal #bienvenida configurado');
+    log('- Canal #logs configurado (solo admins)');
+    log('- Canal #sugerencias configurado');
+    log('- Categoría Tickets configurada');
+    log('- Contador de miembros configurado');
     log(`- Canal #${rolesChannel.name}: menús autoelegibles + reacciones`);
     log('- Reacciones para notificaciones configuradas');
 
@@ -504,9 +552,14 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
         `- Canal #apelaciones: configurado\n` +
         `- Canal #bienvenida: configurado\n` +
         `- Canal #logs: configurado (solo admins)\n` +
+        `- Canal #sugerencias: configurado\n` +
+        `- Categoría Tickets: configurada\n` +
+        `- Contador de miembros: configurado\n` +
         `- Canal #${rolesChannel.name}: menús + reacciones\n\n` +
         `Los usuarios pueden elegir sus roles en #${rolesChannel.name}.\n` +
-        `Los nuevos miembros recibirán automáticamente el rol 🆕 Novato y un mensaje de bienvenida en #bienvenida.`,
+        `Los nuevos miembros recibirán automáticamente el rol 🆕 Novato y un mensaje de bienvenida en #bienvenida.\n` +
+        `Los usuarios pueden crear tickets de soporte con /ticket crear.\n` +
+        `Las sugerencias se publican en #sugerencias con /sugerir.`,
     });
   } catch (error) {
     console.error('Error durante setup:', error);
