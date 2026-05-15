@@ -1,12 +1,21 @@
 import { StringSelectMenuInteraction, MessageFlags } from 'discord.js';
-import { SELF_ASSIGNABLE_CATEGORIES } from '../config/selfAssignable';
+import { SELF_ASSIGNABLE_CATEGORIES, HIERARCHICAL_ROLE_NAMES } from '../config/selfAssignable';
+import { ROLES_CONFIG } from '../config/roles';
 
 function findRoleByName(guild: StringSelectMenuInteraction['guild'], plainName: string, emoji: string) {
   if (!guild) return undefined;
-  const displayName = `${emoji} ${plainName}`;
-  return guild.roles.cache.find(
-    (r) => r.name === displayName || r.name === plainName
-  );
+
+  const allConfigs = [...ROLES_CONFIG, ...SELF_ASSIGNABLE_CATEGORIES.flatMap((c) => c.roles)];
+  const possibleNames: string[] = [plainName];
+
+  for (const cfg of allConfigs) {
+    if (cfg.name === plainName) {
+      possibleNames.push(`${cfg.emoji} ${cfg.name}`);
+    }
+  }
+  possibleNames.push(`${emoji} ${plainName}`);
+
+  return guild.roles.cache.find((r) => possibleNames.includes(r.name));
 }
 
 export async function handleSelectMenu(interaction: StringSelectMenuInteraction) {
@@ -91,7 +100,7 @@ export async function handleSelectMenu(interaction: StringSelectMenuInteraction)
     lines.push('📝 No se realizaron cambios en tus roles.');
   }
   if (errors.length > 0) {
-    lines.push(`⚠️ **Error con:** ${errors.join(', ')} (el bot no tiene permisos suficientes)`);
+    lines.push(`⚠️ **Error con:** ${errors.join(', ')} (no se encontró el rol en el servidor)`);
   }
 
   await interaction.reply({
