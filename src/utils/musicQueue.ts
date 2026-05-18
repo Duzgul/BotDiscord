@@ -11,7 +11,7 @@ import {
   VoiceConnectionStatus,
 } from '@discordjs/voice';
 import { Guild, VoiceBasedChannel } from 'discord.js';
-import ytdl from 'ytdl-core';
+import ytdl from '@distube/ytdl-core';
 
 export interface Song {
   title: string;

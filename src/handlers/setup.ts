@@ -550,8 +550,11 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     }
 
     // Pinned help message in #cumpleaños
-    const existingPinned = await cumpleanosChannel.messages.fetchPinned().catch(() => null);
-    const hasBirthdayInfo = existingPinned?.some(m => m.author.id === guild.client.user?.id && m.content.includes('cumpleaños-registrar'));
+    let hasBirthdayInfo = false;
+    try {
+      const pinned: any = await cumpleanosChannel.messages.fetchPins();
+      hasBirthdayInfo = pinned.some?.((m: any) => m.author.id === guild.client.user?.id) ?? false;
+    } catch {}
 
     if (!hasBirthdayInfo) {
       const birthdayInfoEmbed = new EmbedBuilder()
@@ -613,8 +616,11 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     }
 
     // Pinned help message in #música
-    const existingMusicPinned = await musicaChannel.messages.fetchPinned().catch(() => null);
-    const hasMusicInfo = existingMusicPinned?.some(m => m.author.id === guild.client.user?.id && m.content.includes('música'));
+    let hasMusicInfo = false;
+    try {
+      const pinned: any = await musicaChannel.messages.fetchPins();
+      hasMusicInfo = pinned.some?.((m: any) => m.author.id === guild.client.user?.id) ?? false;
+    } catch {}
 
     if (!hasMusicInfo) {
       const musicInfoEmbed = new EmbedBuilder()

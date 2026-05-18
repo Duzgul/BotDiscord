@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags, ChannelType, TextChannel } from 'discord.js';
-import ytdl from 'ytdl-core';
+import ytdl from '@distube/ytdl-core';
 import {
   addToQueue,
   joinChannel,
