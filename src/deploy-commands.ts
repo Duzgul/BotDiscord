@@ -63,6 +63,15 @@ const commands = [
   new SlashCommandBuilder().setName('ticket-crear').setDescription('Abre un ticket de soporte').addStringOption(o => o.setName('motivo').setDescription('Motivo del ticket').setRequired(true)),
   new SlashCommandBuilder().setName('ticket-cerrar').setDescription('Cierra el ticket actual'),
   new SlashCommandBuilder().setName('ticket-listar').setDescription('Lista tickets abiertos').setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  // === MUSIC ===
+  new SlashCommandBuilder().setName('música').setDescription('Comandos de música')
+    .addSubcommand(sc => sc.setName('reproducir').setDescription('Reproduce una canción de YouTube').addStringOption(o => o.setName('canción').setDescription('Nombre o URL de YouTube').setRequired(true)))
+    .addSubcommand(sc => sc.setName('detener').setDescription('Detiene la música y desconecta al bot'))
+    .addSubcommand(sc => sc.setName('saltar').setDescription('Salta a la siguiente canción'))
+    .addSubcommand(sc => sc.setName('pausar').setDescription('Pausa la canción actual'))
+    .addSubcommand(sc => sc.setName('reanudar').setDescription('Reanuda la canción pausada'))
+    .addSubcommand(sc => sc.setName('cola').setDescription('Muestra la cola de reproducción')),
 ].map((cmd) => cmd.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);

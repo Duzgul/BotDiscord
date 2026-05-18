@@ -35,6 +35,7 @@ import { handleSuggestionCreate, handleSuggestionApprove, handleSuggestionReject
 import { handleTicketCreate, handleTicketClose, handleTicketList } from './handlers/ticket';
 import { updateMemberCount } from './handlers/memberCount';
 import { addVoiceTime, setVoiceJoin } from './utils/profiles';
+import { handleMusicPlay, handleMusicStop, handleMusicSkip, handleMusicPause, handleMusicResume, handleMusicQueue } from './handlers/music';
 
 dotenv.config();
 
@@ -193,6 +194,18 @@ client.on('interactionCreate', async (interaction) => {
         case 'ticket-crear': await handleTicketCreate(interaction); break;
         case 'ticket-cerrar': await handleTicketClose(interaction); break;
         case 'ticket-listar': await handleTicketList(interaction); break;
+        case 'música': {
+          const subcommand = interaction.options.getSubcommand();
+          switch (subcommand) {
+            case 'reproducir': await handleMusicPlay(interaction); break;
+            case 'detener': await handleMusicStop(interaction); break;
+            case 'saltar': await handleMusicSkip(interaction); break;
+            case 'pausar': await handleMusicPause(interaction); break;
+            case 'reanudar': await handleMusicResume(interaction); break;
+            case 'cola': await handleMusicQueue(interaction); break;
+          }
+          break;
+        }
       }
     } else if (interaction.isStringSelectMenu()) {
       await handleSelectMenu(interaction);

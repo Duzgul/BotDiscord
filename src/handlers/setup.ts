@@ -507,6 +507,165 @@ export async function handleSetup(interaction: ChatInputCommandInteraction) {
     log(`  ${memberCountResult}`);
 
     // ========================================
+    // PASO 5b: Categoría Contenidos (#cumpleaños, #música)
+    // ========================================
+    log('\n**[5b/9] Configurando categoría Contenidos...**');
+
+    let contenidosCat = guild.channels.cache.find(
+      (c) => c.name.toLowerCase() === 'contenidos' && c.type === ChannelType.GuildCategory
+    );
+
+    if (!contenidosCat) {
+      log('📝 Creando categoría Contenidos...');
+      contenidosCat = await guild.channels.create({
+        name: 'Contenidos',
+        type: ChannelType.GuildCategory,
+        reason: 'Categoría para canales de contenido (Fortaleza Bot)',
+      });
+      log('  ✅ Categoría Contenidos creada');
+    } else {
+      log('♻️ Categoría Contenidos ya existe');
+    }
+
+    // #cumpleaños
+    let cumpleanosChannel = guild.channels.cache.find(
+      (c) => c.name === 'cumpleaños' && c.type === ChannelType.GuildText
+    ) as TextChannel | undefined;
+
+    if (!cumpleanosChannel) {
+      log('📝 Creando canal #cumpleaños...');
+      cumpleanosChannel = await guild.channels.create({
+        name: 'cumpleaños',
+        type: ChannelType.GuildText,
+        topic: '🎂 Registra tu cumpleaños y recibe felicitaciones',
+        parent: contenidosCat.id,
+        reason: 'Canal de cumpleaños (Fortaleza Bot)',
+      });
+      log('  ✅ Canal #cumpleaños creado');
+    } else {
+      log('♻️ Canal #cumpleaños ya existe');
+      if (contenidosCat && cumpleanosChannel.parentId !== contenidosCat.id) {
+        await cumpleanosChannel.setParent(contenidosCat.id, { reason: 'Movido a categoría Contenidos (Fortaleza Bot)' }).catch(() => {});
+      }
+    }
+
+    // Pinned help message in #cumpleaños
+    const existingPinned = await cumpleanosChannel.messages.fetchPinned().catch(() => null);
+    const hasBirthdayInfo = existingPinned?.some(m => m.author.id === guild.client.user?.id && m.content.includes('cumpleaños-registrar'));
+
+    if (!hasBirthdayInfo) {
+      const birthdayInfoEmbed = new EmbedBuilder()
+        .setColor(0xff69b4)
+        .setTitle('🎂 Comandos de Cumpleaños — La Fortaleza de Duzgul')
+        .setDescription(
+          '¡Registra tu cumpleaños para recibir una felicitación especial ese día!\n\n' +
+          'A continuación, los comandos disponibles:'
+        )
+        .addFields(
+          {
+            name: '📝 `/cumpleaños-registrar`',
+            value: 'Registra tu fecha de cumpleaños. Recibes día y mes como parámetros.\nEjemplo: `/cumpleaños-registrar dia:15 mes:6` para el 15 de junio.',
+            inline: false,
+          },
+          {
+            name: '🔍 `/cumpleaños-ver`',
+            value: 'Consulta el cumpleaños de un usuario (o el tuyo si no especificas).\nEjemplo: `/cumpleaños-ver usuario:@alguien`',
+            inline: false,
+          },
+          {
+            name: '📋 `/cumpleaños-listar`',
+            value: 'Lista todos los cumpleaños registrados. Puedes filtrar por mes.\nEjemplo: `/cumpleaños-listar mes:6`',
+            inline: false,
+          },
+          {
+            name: '❌ `/cumpleaños-eliminar`',
+            value: 'Elimina tu cumpleaños registrado.',
+            inline: false,
+          }
+        )
+        .setFooter({ text: 'Las felicitaciones se publican automáticamente en este canal el día del cumpleaños.' });
+
+      const birthdayMsg = await cumpleanosChannel.send({ embeds: [birthdayInfoEmbed] });
+      await birthdayMsg.pin().catch(() => {});
+      log('  📌 Mensaje de ayuda de cumpleaños fijado');
+    }
+
+    // #música
+    let musicaChannel = guild.channels.cache.find(
+      (c) => c.name === 'música' && c.type === ChannelType.GuildText
+    ) as TextChannel | undefined;
+
+    if (!musicaChannel) {
+      log('📝 Creando canal #música...');
+      musicaChannel = await guild.channels.create({
+        name: 'música',
+        type: ChannelType.GuildText,
+        topic: '🎵 Música del bot — Usa /música reproducir para escuchar',
+        parent: contenidosCat.id,
+        reason: 'Canal de música (Fortaleza Bot)',
+      });
+      log('  ✅ Canal #música creado');
+    } else {
+      log('♻️ Canal #música ya existe');
+      if (contenidosCat && musicaChannel.parentId !== contenidosCat.id) {
+        await musicaChannel.setParent(contenidosCat.id, { reason: 'Movido a categoría Contenidos (Fortaleza Bot)' }).catch(() => {});
+      }
+    }
+
+    // Pinned help message in #música
+    const existingMusicPinned = await musicaChannel.messages.fetchPinned().catch(() => null);
+    const hasMusicInfo = existingMusicPinned?.some(m => m.author.id === guild.client.user?.id && m.content.includes('música'));
+
+    if (!hasMusicInfo) {
+      const musicInfoEmbed = new EmbedBuilder()
+        .setColor(0x9b59b6)
+        .setTitle('🎵 Comandos de Música — La Fortaleza de Duzgul')
+        .setDescription(
+          '¡Escucha música en tu canal de voz! Los mensajes de reproducción se publican aquí.\n\n' +
+          'A continuación, los comandos disponibles:'
+        )
+        .addFields(
+          {
+            name: '🎶 `/música reproducir`',
+            value: 'Reproduce una canción de YouTube usando su nombre o URL.\nEjemplo: `/música reproducir canción:Never Gonna Give You Up`\nDebes estar en un canal de voz para usar este comando.',
+            inline: false,
+          },
+          {
+            name: '⏹️ `/música detener`',
+            value: 'Detiene la reproducción, limpia la cola y desconecta al bot del canal de voz.',
+            inline: false,
+          },
+          {
+            name: '⏭️ `/música saltar`',
+            value: 'Salta a la siguiente canción en la cola.',
+            inline: false,
+          },
+          {
+            name: '⏸️ `/música pausar`',
+            value: 'Pausa la canción actual.',
+            inline: false,
+          },
+          {
+            name: '▶️ `/música reanudar`',
+            value: 'Reanuda la canción pausada.',
+            inline: false,
+          },
+          {
+            name: '📋 `/música cola`',
+            value: 'Muestra la cola de reproducción actual y la canción en curso.',
+            inline: false,
+          }
+        )
+        .setFooter({ text: 'Los mensajes de "Ahora suena" se publican en este canal.' });
+
+      const musicMsg = await musicaChannel.send({ embeds: [musicInfoEmbed] });
+      await musicMsg.pin().catch(() => {});
+      log('  📌 Mensaje de ayuda de música fijado');
+    }
+
+    log('✅ Categoría Contenidos configurada (#cumpleaños, #música)');
+
+    // ========================================
     // PASO 6: Verificación final
     // ========================================
     log('\n**[6/9] Verificación...**');
@@ -538,6 +697,9 @@ log('- Canal #bienvenida configurado');
     log('- Canal #sugerencias configurado');
     log('- Categoría Tickets configurada');
     log('- Contador de miembros configurado');
+    log('- Canal #cumpleaños configurado (con instrucciones)');
+    log('- Canal #música configurado (con instrucciones)');
+    log('- Categoría Contenidos configurada');
     log(`- Canal #${rolesChannel.name}: menús autoelegibles + reacciones`);
     log('- Reacciones para notificaciones configuradas');
 
@@ -555,11 +717,16 @@ log('- Canal #bienvenida configurado');
         `- Canal #sugerencias: configurado\n` +
         `- Categoría Tickets: configurada\n` +
         `- Contador de miembros: configurado\n` +
+        `- Canal #cumpleaños: configurado (con instrucciones)\n` +
+        `- Canal #música: configurado (con instrucciones)\n` +
+        `- Categoría Contenidos: configurada\n` +
         `- Canal #${rolesChannel.name}: menús + reacciones\n\n` +
         `Los usuarios pueden elegir sus roles en #${rolesChannel.name}.\n` +
         `Los nuevos miembros recibirán automáticamente el rol 🆕 Novato y un mensaje de bienvenida en #bienvenida.\n` +
         `Los usuarios pueden crear tickets de soporte con /ticket crear.\n` +
-        `Las sugerencias se publican en #sugerencias con /sugerir.`,
+        `Las sugerencias se publican en #sugerencias con /sugerir.\n` +
+        `Usa /música reproducir para escuchar música (debes estar en un canal de voz).\n` +
+        `Los cumpleaños se registran con /cumpleaños-registrar y se felicitan en #cumpleaños.`,
     });
   } catch (error) {
     console.error('Error durante setup:', error);

@@ -102,7 +102,7 @@ export async function checkBirthdays(client: any): Promise<void> {
 
   for (const guild of client.guilds.cache.values()) {
     const channel = guild.channels.cache.find(
-      (c: any) => (c.name === 'bienvenida' || c.name === 'cumpleaños') && c.isTextBased()
+      (c: any) => (c.name === 'cumpleaños' || c.name === 'bienvenida') && c.isTextBased()
     ) as TextChannel | undefined;
 
     if (!channel) continue;
